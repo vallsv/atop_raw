@@ -108,6 +108,9 @@ class Reader:
 
     def __init__(self, stream):
         self._stream = stream
+        self._init()
+
+    def _init(self):
         rawheader = self.read_header()
         self._rawheader = rawheader
 
