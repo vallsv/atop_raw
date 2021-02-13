@@ -11,6 +11,7 @@ import zlib
 import typing
 import logging
 import datetime
+import numpy
 import pycstruct
 import os.path
 
@@ -63,7 +64,7 @@ class Record:
     @property
     def curtime(self) -> datetime.datetime:
         """Returns a datetime object for the curtime"""
-        curtime = self._header["curtime"]
+        curtime = self._header["curtime"][0]
         d = datetime.datetime.fromtimestamp(curtime)
         return d
 
@@ -114,21 +115,21 @@ class Reader:
         rawheader = self.read_header()
         self._rawheader = rawheader
 
-        if rawheader["rawheadlen"] < rawheader_t.size():
+        if rawheader["rawheadlen"][0] < rawheader_t.size():
             raise IOError(
                 "Read rawheader size smaller than expected: This is machine dependent. The definition have to be manualy fixed"
             )
-        if rawheader["rawreclen"] < rawrecord_t.size():
+        if rawheader["rawreclen"][0] < rawrecord_t.size():
             raise IOError(
                 "Read rawrecord size smaller than expected: This is machine dependent. The definition have to be manualy fixed"
             )
 
-        if rawheader["sstatlen"] < sstat_t.size():
+        if rawheader["sstatlen"][0] < sstat_t.size():
             raise IOError(
                 "Read sstat size smaller than expected: This is machine dependent. The definition have to be manualy fixed"
             )
 
-        if rawheader["pstatlen"] < pstat_t.size():
+        if rawheader["pstatlen"][0] < pstat_t.size():
             raise IOError(
                 "Read pstat size smaller than expected: This is machine dependent. The definition have to be manualy fixed"
             )
@@ -156,7 +157,7 @@ class Reader:
     def read_header(self) -> rawheader_t:
         """Read a rawheader_t from the current position of the stream"""
         data = self._stream.read(rawheader_t.size())
-        rawheader = rawheader_t.deserialize(data)
+        rawheader = numpy.frombuffer(data, dtype=rawheader_t.dtype())
         return rawheader
 
     def read_record_header(self) -> typing.Optional[rawrecord_t]:
@@ -164,33 +165,30 @@ class Reader:
         data = self._stream.read(rawrecord_t.size())
         if data == b"":
             return None
-        rawrecord = rawrecord_t.deserialize(data)
+        rawrecord = numpy.frombuffer(data, dtype=rawrecord_t.dtype())
         return rawrecord
 
     def read_sstat(self, record: Record) -> sstat_t:
         """Read a sstat_t from the current position of the stream"""
-        size = record.header["scomplen"]
+        size = record.header["scomplen"][0]
         compressed_sstat = self._stream.read(size)
         sstat = zlib.decompress(compressed_sstat)
         assert len(sstat) == sstat_t.size()
-        sstat = sstat_t.deserialize(sstat[: sstat_t.size()])
+        sstat = numpy.frombuffer(sstat, dtype=sstat_t.dtype(), count=1)
         return sstat
 
     def read_pstats(self, record: Record) -> typing.List[pstat_t]:
         """Read a list of pstat_t from the current position of the stream"""
-        size = record.header["pcomplen"]
+        size = record.header["pcomplen"][0]
         compressed_pstat = self._stream.read(size)
-        npresent = record.header["npresent"]
+        npresent = record.header["npresent"][0]
         pstat = zlib.decompress(compressed_pstat)
-        pstat_list_t = pycstruct.StructDef()
-        pstat_list_t.add(pstat_t, "pstats", length=npresent)
-        assert pstat_list_t.size() <= len(pstat)
-        pstats = pstat_list_t.deserialize(pstat[: pstat_list_t.size()])
-        return pstats["pstats"]
+        pstats = numpy.frombuffer(pstat, dtype=pstat_t.dtype(), count=npresent)
+        return pstats
 
     def move_to_next_record(self, record: Record):
-        sstat_length = record.header["scomplen"]
-        pstat_length = record.header["pcomplen"]
+        sstat_length = record.header["scomplen"][0]
+        pstat_length = record.header["pcomplen"][0]
         pos = record.pos_in_file() + rawrecord_t.size() + sstat_length + pstat_length
         self._stream.seek(pos, io.SEEK_SET)
 
@@ -199,6 +197,6 @@ class Reader:
         self._stream.seek(pos, io.SEEK_SET)
 
     def move_to_pstats(self, record: Record):
-        sstat_length = record.header["scomplen"]
+        sstat_length = record.header["scomplen"][0]
         pos = record.pos_in_file() + rawrecord_t.size() + sstat_length
         self._stream.seek(pos, io.SEEK_SET)
