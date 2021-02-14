@@ -50,3 +50,55 @@ class ProcessReport:
             + pstat["net"]["udprsz"]
         )
         return net / 1000000
+
+
+class ProcessSet:
+    """Helper to retrieve process statistics from pid, ppid, cmd..."""
+
+    def __init__(self, pstats):
+        self.__pstats = pstats
+        self.__pid_to_index = {}
+        self.__pid_to_child = {}
+        self.__cmd_to_pid = {}
+        self._parse()
+
+    def _parse(self):
+        states = set({})
+        for i, pstat in enumerate(self.__pstats):
+            pid = pstat["gen"]["pid"]
+            ppid = pstat["gen"]["ppid"]
+            cmd = pstat["gen"]["cmdline"].decode("ascii")
+            self.__pid_to_index[pid] = i
+            self.__cmd_to_pid[cmd] = pid
+            if ppid not in self.__pid_to_child:
+                self.__pid_to_child[ppid] = [pid]
+            else:
+                self.__pid_to_child[ppid].append(pid)
+
+            state = chr(pstat["gen"]["state"])
+            states.add(state)
+
+    def pids_from_cmd(self, partial_cmd=None, states=None):
+        for cmd, pid in self.__cmd_to_pid.items():
+            if partial_cmd in cmd:
+                yield pid
+
+    def pids_from_parent_pid(self, ppid, recurive=True):
+        pids = self.__pid_to_child.get(ppid)
+        if pids is None:
+            # No children
+            return
+        for pid in pids:
+            yield pid
+            if recurive:
+                yield from self.pids_from_parent_pid(pid)
+
+    def pstat(self, pid):
+        i = self.__pid_to_index.get(pid)
+        if i is None:
+            return None
+        return self.__pstats[i]
+
+    def child_pstats(self, ppid, recursive=True):
+        for pid in self.pids_from_parent_pid(ppid, recursive=recursive):
+            yield self.pstat(pid)
