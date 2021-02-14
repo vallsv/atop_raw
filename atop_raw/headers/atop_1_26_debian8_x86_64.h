@@ -370,7 +370,7 @@ struct pstat {
 	/* GENERAL PROCESS INFO 					*/
 	struct gen {
 		int	pid;		/* process identification 	*/
-		int	ppid;           /* parent process identification*/
+		int	ppid;		/* parent process identification*/
 		int	ruid;		/* real  user  identification 	*/
 		int	euid;		/* eff.  user  identification 	*/
 		int	suid;		/* saved user  identification 	*/
@@ -381,7 +381,13 @@ struct pstat {
 		int	fsgid;		/* fs    group identification 	*/
 		int	nthr;		/* number of threads in tgroup 	*/
 		char	name[PNAMLEN+1];/* process name string       	*/
-		char 	state;		/* process state ('E' = exited)	*/
+		char 	state;	/* process state
+						- D  uninterruptible sleep (usually IO)
+						- R  runnable (on run queue)
+						- S  sleeping
+						- T  traced or stopped
+						- Z  a defunct ("zombie") process
+						- E  exited (added by atop) */
 		int	excode;		/* process exit status		*/
 		time_t 	btime;		/* process start time (epoch)	*/
 		time_t 	elaps;		/* process elaps time (hertz)	*/
