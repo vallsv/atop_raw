@@ -35,3 +35,18 @@ class ProcessReport:
         rmem = pstat["mem"]["rmem"]
         mem = rmem * 100 / self._available_mem
         return mem
+
+    def get_dsk_rw_sectors(self, pstat):
+        """Compute the amount read/write sectors"""
+        dsk = pstat["dsk"]["rsz"] + pstat["dsk"]["wsz"]
+        return dsk
+
+    def get_net_rw(self, pstat):
+        """Compute the amount of up/down MB data exchanged in the network"""
+        net = (
+            pstat["net"]["tcpssz"]
+            + pstat["net"]["tcprsz"]
+            + pstat["net"]["udpssz"]
+            + pstat["net"]["udprsz"]
+        )
+        return net / 1000000
