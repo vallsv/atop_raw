@@ -65,7 +65,7 @@ class Record:
     @property
     def curtime(self) -> datetime.datetime:
         """Returns a datetime object for the curtime"""
-        curtime = self._header["curtime"][0]
+        curtime = self._header["curtime"]
         d = datetime.datetime.fromtimestamp(curtime)
         return d
 
@@ -116,21 +116,21 @@ class Reader:
         rawheader = self.read_header()
         self._rawheader = rawheader
 
-        if rawheader["rawheadlen"][0] < rawheader_t.size():
+        if rawheader["rawheadlen"] < rawheader_t.size():
             raise IOError(
                 "Read rawheader size smaller than expected: This is machine dependent. The definition have to be manualy fixed"
             )
-        if rawheader["rawreclen"][0] < rawrecord_t.size():
+        if rawheader["rawreclen"] < rawrecord_t.size():
             raise IOError(
                 "Read rawrecord size smaller than expected: This is machine dependent. The definition have to be manualy fixed"
             )
 
-        if rawheader["sstatlen"][0] < sstat_t.size():
+        if rawheader["sstatlen"] < sstat_t.size():
             raise IOError(
                 "Read sstat size smaller than expected: This is machine dependent. The definition have to be manualy fixed"
             )
 
-        if rawheader["pstatlen"][0] < pstat_t.size():
+        if rawheader["pstatlen"] < pstat_t.size():
             raise IOError(
                 "Read pstat size smaller than expected: This is machine dependent. The definition have to be manualy fixed"
             )
@@ -158,7 +158,7 @@ class Reader:
     def read_header(self) -> rawheader_t:
         """Read a rawheader_t from the current position of the stream"""
         data = self._stream.read(rawheader_t.size())
-        rawheader = numpy.frombuffer(data, dtype=to_dtype(rawheader_t))
+        rawheader = numpy.frombuffer(data, dtype=to_dtype(rawheader_t))[0]
         return rawheader
 
     def read_record_header(self) -> typing.Optional[rawrecord_t]:
@@ -166,30 +166,30 @@ class Reader:
         data = self._stream.read(rawrecord_t.size())
         if data == b"":
             return None
-        rawrecord = numpy.frombuffer(data, dtype=to_dtype(rawrecord_t))
+        rawrecord = numpy.frombuffer(data, dtype=to_dtype(rawrecord_t))[0]
         return rawrecord
 
     def read_sstat(self, record: Record) -> sstat_t:
         """Read a sstat_t from the current position of the stream"""
-        size = record.header["scomplen"][0]
+        size = record.header["scomplen"]
         compressed_sstat = self._stream.read(size)
         sstat = zlib.decompress(compressed_sstat)
         assert len(sstat) == sstat_t.size()
-        sstat = numpy.frombuffer(sstat, dtype=to_dtype(sstat_t), count=1)
+        sstat = numpy.frombuffer(sstat, dtype=to_dtype(sstat_t), count=1)[0]
         return sstat
 
     def read_pstats(self, record: Record) -> typing.List[pstat_t]:
         """Read a list of pstat_t from the current position of the stream"""
-        size = record.header["pcomplen"][0]
+        size = record.header["pcomplen"]
         compressed_pstat = self._stream.read(size)
-        npresent = record.header["npresent"][0]
+        npresent = record.header["npresent"]
         pstat = zlib.decompress(compressed_pstat)
         pstats = numpy.frombuffer(pstat, dtype=to_dtype(pstat_t), count=npresent)
         return pstats
 
     def move_to_next_record(self, record: Record):
-        sstat_length = record.header["scomplen"][0]
-        pstat_length = record.header["pcomplen"][0]
+        sstat_length = record.header["scomplen"]
+        pstat_length = record.header["pcomplen"]
         pos = record.pos_in_file() + rawrecord_t.size() + sstat_length + pstat_length
         self._stream.seek(pos, io.SEEK_SET)
 
@@ -198,6 +198,6 @@ class Reader:
         self._stream.seek(pos, io.SEEK_SET)
 
     def move_to_pstats(self, record: Record):
-        sstat_length = record.header["scomplen"][0]
+        sstat_length = record.header["scomplen"]
         pos = record.pos_in_file() + rawrecord_t.size() + sstat_length
         self._stream.seek(pos, io.SEEK_SET)
