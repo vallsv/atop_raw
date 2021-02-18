@@ -28,6 +28,8 @@ rawrecord_t = c_structs["rawrecord"]
 sstat_t = c_structs["sstat"]
 pstat_t = c_structs["pstat"]
 
+USE_PYCSTRUCT_FOR_DESERIALIZING = True
+
 
 class NoMoreRecord(IOError):
     pass
@@ -158,7 +160,10 @@ class Reader:
     def read_header(self) -> rawheader_t:
         """Read a rawheader_t from the current position of the stream"""
         data = self._stream.read(rawheader_t.size())
-        rawheader = numpy.frombuffer(data, dtype=to_dtype(rawheader_t))[0]
+        if USE_PYCSTRUCT_FOR_DESERIALIZING:
+            rawheader = rawheader_t.deserialize(data)
+        else:
+            rawheader = numpy.frombuffer(data, dtype=to_dtype(rawheader_t))[0]
         return rawheader
 
     def read_record_header(self) -> typing.Optional[rawrecord_t]:
@@ -166,7 +171,10 @@ class Reader:
         data = self._stream.read(rawrecord_t.size())
         if data == b"":
             return None
-        rawrecord = numpy.frombuffer(data, dtype=to_dtype(rawrecord_t))[0]
+        if USE_PYCSTRUCT_FOR_DESERIALIZING:
+            rawrecord = rawrecord_t.deserialize(data)
+        else:
+            rawrecord = numpy.frombuffer(data, dtype=to_dtype(rawrecord_t))[0]
         return rawrecord
 
     def read_sstat(self, record: Record) -> sstat_t:
@@ -175,7 +183,10 @@ class Reader:
         compressed_sstat = self._stream.read(size)
         sstat = zlib.decompress(compressed_sstat)
         assert len(sstat) == sstat_t.size()
-        sstat = numpy.frombuffer(sstat, dtype=to_dtype(sstat_t), count=1)[0]
+        if USE_PYCSTRUCT_FOR_DESERIALIZING:
+            sstat = sstat_t.deserialize(sstat)
+        else:
+            sstat = numpy.frombuffer(sstat, dtype=to_dtype(sstat_t), count=1)[0]
         return sstat
 
     def read_pstats(self, record: Record) -> typing.List[pstat_t]:
@@ -184,7 +195,19 @@ class Reader:
         compressed_pstat = self._stream.read(size)
         npresent = record.header["npresent"]
         pstat = zlib.decompress(compressed_pstat)
-        pstats = numpy.frombuffer(pstat, dtype=to_dtype(pstat_t), count=npresent)
+        if USE_PYCSTRUCT_FOR_DESERIALIZING:
+            pstat_list_t = pycstruct.StructDef()
+            pstat_list_t.add(pstat_t, "pstats", length=npresent)
+            assert pstat_list_t.size() <= len(pstat)
+            if hasattr(pycstruct.pycstruct, "_InstanceList"):
+                pstats = pycstruct.pycstruct._InstanceList(
+                    pstat_list_t, "pstats", pstat, 0
+                )
+            else:
+                pstats = pstat_list_t.deserialize(pstat[: pstat_list_t.size()])
+                pstats = pstats["pstats"]
+        else:
+            pstats = numpy.frombuffer(pstat, dtype=to_dtype(pstat_t), count=npresent)
         return pstats
 
     def move_to_next_record(self, record: Record):
