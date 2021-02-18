@@ -15,6 +15,12 @@ import atop_raw
 from atop_raw.utils import ProcessReport
 
 
+def normalize_str(data):
+    if isinstance(data, bytes):
+        return data.decode("ascii")
+    return data
+
+
 class ProcessMeasure(typing.NamedTuple):
     pid: int
     cmd: str
@@ -111,7 +117,7 @@ def process(options):
                 report = ProcessReport(reader, sstat)
 
                 for pstat in record.pstats:
-                    cmd = pstat["gen"]["cmdline"]
+                    cmd = normalize_str(pstat["gen"]["cmdline"])
                     for f in cmd_filters:
                         if f in cmd:
                             must_be_recorded = True
@@ -120,7 +126,7 @@ def process(options):
                         must_be_recorded = False
 
                     if must_be_recorded:
-                        name = pstat["gen"]["name"]
+                        name = normalize_str(pstat["gen"]["name"])
                         pid = pstat["gen"]["pid"]
                         mem = report.get_mem_percent(pstat)
                         cpu = report.get_cpu_percent(pstat)

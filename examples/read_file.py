@@ -9,6 +9,12 @@ import atop_raw
 from atop_raw.utils import ProcessReport
 
 
+def normalize_str(data):
+    if isinstance(data, bytes):
+        return data.decode("ascii")
+    return data
+
+
 if len(sys.argv) == 1:
     raise RuntimeError("An atop file (at least) is expected")
 
@@ -30,8 +36,8 @@ for filename in filenames:
             report = ProcessReport(reader, sstat)
 
             for pstat in record.pstats:
-                cmd = pstat["gen"]["cmdline"]
-                name = pstat["gen"]["name"]
+                cmd = normalize_str(pstat["gen"]["cmdline"])
+                name = normalize_str(pstat["gen"]["name"])
                 pid = pstat["gen"]["pid"]
                 mem = report.get_mem_percent(pstat)
                 cpu = report.get_cpu_percent(pstat)
