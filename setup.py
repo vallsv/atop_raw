@@ -3,7 +3,7 @@ from setuptools import setup
 
 packages = ["atop_raw"]
 
-install_requires = ["pycstruct >= 0.7"]
+install_requires = ["pycstruct >= 0.9"]
 
 package_data = {"atop_raw.headers": ["*.h"]}
 
