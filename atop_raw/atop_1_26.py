@@ -12,20 +12,29 @@ import typing
 import logging
 import datetime
 import numpy
-import pycstruct
 import os.path
 
 _logger = logging.getLogger(__name__)
 
 
-_PATH = os.path.dirname(__file__)
-FILE_DESCRIPTION = os.path.join(_PATH, "headers", "atop_1_26_debian8_x86_64.h")
-c_structs = pycstruct.parse_file(FILE_DESCRIPTION)
+try:
+    import pycstruct
 
-rawheader_t = c_structs["rawheader"]
-rawrecord_t = c_structs["rawrecord"]
-sstat_t = c_structs["sstat"]
-pstat_t = c_structs["pstat"]
+    _PATH = os.path.dirname(__file__)
+    FILE_DESCRIPTION = os.path.join(_PATH, "headers", "atop_1_26_debian8_x86_64.h")
+    c_structs = pycstruct.parse_file(FILE_DESCRIPTION)
+
+    rawheader_t = c_structs["rawheader"]
+    rawrecord_t = c_structs["rawrecord"]
+    sstat_t = c_structs["sstat"]
+    pstat_t = c_structs["pstat"]
+except Exception:
+    from .headers import atop_1_26_debian8_x86_64 as headers
+
+    rawheader_t = headers.rawheader_t
+    rawrecord_t = headers.rawrecord_t
+    sstat_t = headers.sstat_t
+    pstat_t = headers.pstat_t
 
 
 class NoMoreRecord(IOError):
