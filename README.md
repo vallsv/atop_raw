@@ -40,7 +40,7 @@ with open(filename, "rb") as stream:
         print(record.sstat)
         print()
         for pstat in record.pstats:
-            cmd = pstat["gen"]["cmdline"]
+            cmd = pstat["gen"]["cmdline"].decode("ascii")
             pid = pstat["gen"]["pid"]
             print(f"{pid:>5} {cmd}")
         print()
